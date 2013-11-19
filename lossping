@@ -1,7 +1,7 @@
 #!/bin/bash
 # (CL) Daniel Mollberg
 # Ugly pinger :)
-echo "PING $0, printing stats only on packet loss"
+echo "PING $1, printing stats only on packet loss"
 if [ -z $1 ]; then
   echo "No host"
   echo "Usage: $0 destination"
