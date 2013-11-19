@@ -1,0 +1,38 @@
+#!/bin/bash
+# (CL) Daniel Mollberg
+# Ugly pinger :)
+echo "PING $0, printing stats only on packet loss"
+if [ -z $1 ]; then
+  echo "No host"
+  echo "Usage: $0 destination"
+  echo "ctrl+\ to print stats"
+  exit 1
+fi
+
+printstats()
+{
+    loss=$(echo "scale=2; $dropped/$sent" | bc | sed 's/\.//')
+    echo -e "Stats: $dropped packets dropped, $sent packets sent, pattern: $pattern, loss: $loss%, old $rtt";
+}
+
+
+# catch ctrl+\ and print statistics
+trap 'printstats' QUIT
+
+sent=1
+dropped=0
+rtt="no data"
+data=(0000 FFFF AAAA 5555 ADCB 4040 8080 1000 4242 DEAD BEEF C0CA C01A C001 BABE)
+while [ 1 ]; do
+  pattern=${data[$(($sent%${#data[*]}))]}
+  res=$(ping -p $pattern -W 1 -c 1 $1 | egrep "^[0-9]* packets|^rtt" | tr '\n' '*')
+  if [ -n "$(echo $res | egrep '0 received')" ] ; then
+    dropped=$(($dropped+1))
+    loss=$(echo "scale=2; $dropped/$sent" | bc | sed 's/\.//')
+    echo -e "$dropped packets dropped, $sent packets sent, pattern: $pattern, loss: $loss%, old $rtt";
+  else
+     rtt="$(echo $res | grep 'rtt' | cut -d'*' -f2)";
+     sleep 1;
+  fi ;
+  sent=$(($sent+1));
+done
