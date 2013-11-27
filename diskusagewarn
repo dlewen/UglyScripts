@@ -1,0 +1,58 @@
+#!/bin/bash
+# (CL) Daniel Mollberg 2012
+
+# Email address to send warning to
+EMAIL=$1
+# % limit
+WARNLIMIT=$2
+# If 'hostname -a' isnt enough you can add a hostname or comment that will be used in the email subject
+HOSTCOMMENT=$3
+
+# mail
+mail=/usr/bin/mail
+
+if [ -z $3 ] ; then
+echo "usage: $0 EMAIL WARNLIMIT HOSTCOMMENT"
+exit 0
+fi
+
+if [ ! -e $mail ]; then
+echo "$mail not found"
+exit 0
+fi
+
+function printmessage {
+  echo "Hi!"
+  echo ""
+  echo "The disk usage on $partitions is more then $WARNLIMIT%, this might or might not be a problem, please have a look anyway."
+  echo ""
+  echo "Kind Regards"
+  echo "$HOSTCOMMENT"
+  echo ""
+  echo "DEBUG:"
+  echo -e "\nhostname -A"
+  hostname -A
+  echo -e "\ndf -h"
+  df -h | sed 's/\s\+/\t/g'
+}
+
+ORIGIFS=$IFS
+IFS=$'\n';
+partitions=""
+for LINE in $(df | grep -v Filesystem); do
+  print $LINE
+  percent=$(echo $LINE | sed 's/^.*\s\([0-9]*\)\%\s.*$/\1/')
+  if [ $percent -gt $WARNLIMIT ]; then
+    if [ -n "$partitions" ] ; then
+      partitions="$partitions,  $(echo $LINE | sed 's/^.*\s\(.*\)$/\1/')"
+    else
+      partitions=$(echo $LINE | sed 's/^.*\s\(.*\)$/\1/')
+    fi
+  fi;
+done
+IFS=$ORIGIFS
+
+if [ -n "$partitions" ] ; then
+  printmessage
+  printmessage | mail -s "High disk usage on $(hostname -a) ($HOSTCOMMENT)" $EMAIL
+fi
