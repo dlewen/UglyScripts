@@ -1,0 +1,38 @@
+#!/bin/bash
+# (CL) Daniel Mollberg
+
+IFS=$'\n'
+
+numscreens="$(xrandr | awk ' / connected/ { print $1 } ' |wc -l)"
+screens="$(xrandr | awk ' / connected/ { print $1 } ')"
+offscreens="$(xrandr | awk ' / disconnected/ { print $1 } ')"
+
+while read -r off; do
+  xrandr --output ${off} --off
+done <<< "$offscreens"
+
+if [ $numscreens -ge 3 ]; then
+  xrandr --output LVDS1 --off
+  while read -r screen; do
+    if [ "$screen" != "LVDS1" ]; then
+      if [ -z "$lastscreen" ]; then
+        xrandr --output ${screen} --auto
+      else
+        xrandr --output ${screen} --auto --left-of $lastscreen
+      fi
+    lastscreen="$screen"
+    fi
+  done <<< "$screens"
+elif [ $numscreens -ge 2 ]; then
+  while read -r screen; do
+    if [ -z "$lastscreen" ]; then
+      xrandr --output ${screen} --auto
+    else
+      xrandr --output ${screen} --auto --left-of $lastscreen
+    fi
+    lastscreen="$screen"
+  done <<< "$screens"
+else
+  xrandr --output $screens --auto
+fi
+
